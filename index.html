@@ -303,10 +303,14 @@
       <div class="word-edit-hint">💡 لو سبت خانة "الكلمة الجديدة" فاضية، هيتغيّر اللون بس والرسم الأصلي (الخط والحجم) هيفضل زي باقي الكلمات تمامًا. لو كتبت نص جديد، الكلمة دي هترسم بخط عادي مش برسم المصحف الدقيق، لأن رسمة المصحف مبنية بس للكلمات الأصلية.</div>
       <div class="rules-trigger-row">
         <button class="btn btn-outline" id="openRulesSheetBtn" type="button">📋 قواعد الكلمات <span id="rulesCountBadge">0</span></button>
-        <button class="btn btn-outline" id="exportRulesBtn" type="button">⬇️ تصدير القواعد</button>
-        <button class="btn btn-outline" id="importRulesBtn" type="button">⬆️ استيراد القواعد</button>
+        <button class="btn btn-outline" id="exportRulesBtn" type="button">⬇️ تصدير ملف المصحف</button>
+        <button class="btn btn-outline" id="importRulesBtn" type="button">⬆️ استيراد ملف مصحف</button>
         <input type="file" id="importRulesFile" accept="application/json" style="display:none;">
       </div>
+      <div class="word-edit-row">
+        <input type="text" id="mushafNameInput" placeholder="اسم المصحف (يُستخدم في اسم ملف التصدير) — مثال: مصحف البزي" value="مصحف البزي">
+      </div>
+      <div class="word-edit-hint">💡 نظام العمل بين المصاحف: كل مصحف (البزي، وغيره لاحقًا) له ملف واحد بصيغة JSON فيه كل قواعده وإعداداته. لما تيجي تشتغل على مصحف معين، اضغط "استيراد ملف مصحف" واختاره — هيحمّل كل قواعده وإعدادات ميم الجمع دفعة واحدة في نفس الأداة دي. وبعد ما تخلّص مراجعة/تعديل، اضغط "⬇️ تصدير ملف المصحف" عشان تحفظ نسخة محدّثة من ملف المصحف ده (JSON، للرجوع له بعدين)، ثم استخدم زرار "تحميل نسخة أوفلاين" الموجود تحت عشان تصدّر المصحف النهائي (HTML) اللي هتنشره.</div>
     </div>
   </details>
 
@@ -363,6 +367,7 @@
   </div>
 
 <script src="tajweed-rules-engine.js"></script>
+<script src="mushafs/bazzi-rules.js"></script>
 <script>
 // --- المتغيرات العامة ---
 const state = { activeColor: '#8b1e1e', mode: 'bg', clickScope: 'single' };
@@ -424,14 +429,15 @@ async function ensureV2PageFont(pageNum){
 // بس منطق التطبيق نفسه (applyWordRules / applyMeemJamaRule / إلخ) جوه TajweedEngine المشترك.
 function normalizeArabic(text){ return TajweedEngine.normalizeArabic(text); }
 function parseManualExceptions(raw){ return TajweedEngine.parseManualExceptions(raw); }
-function applyWordRules(flatItems, surahNum){ TajweedEngine.applyWordRules(flatItems, surahNum, wordRules); }
+function applyWordRules(flatItems, surahNum){ BazziRules.applyWordRules(flatItems, surahNum, wordRules); }
 
 // --- القاعدة العامة التلقائية: صلة ميم الجمع على كل كلمة تنتهي بـ"ـهُمْ/ـهِمْ/ـكُمْ/ـتُمْ" في المصحف كله ---
-// بتتفعّل/تتوقف من المفتاح meemJamaEnabled، ومنطقها الفعلي جوه TajweedEngine.applyMeemJamaRule.
+// ده سلوك خاص برواية البزي بس (منطقه الفعلي جوه mushafs/bazzi-rules.js، مش جوه المحرك المشترك)
+// بتتفعّل/تتوقف من المفتاح meemJamaEnabled.
 let meemJamaEnabled = true;
 let meemJamaExceptions = []; // نفس صيغة استثناءات القواعد: "7" (آية كاملة) أو "7:3" (آية:كلمة)
 function applyMeemJamaRule(flatItems, surahNum){
-  TajweedEngine.applyMeemJamaRule(flatItems, surahNum, { enabled: meemJamaEnabled, exceptions: meemJamaExceptions });
+  BazziRules.applyMeemJamaRule(flatItems, surahNum, { enabled: meemJamaEnabled, exceptions: meemJamaExceptions });
 }
 
 // تعديل حجم الخط (بدل Scale) لمنع الانضغاط واحتفاظ الآيات بشكلها الدائري
@@ -914,12 +920,17 @@ rulesSheetBody.addEventListener('click', (e) => {
   if (pageNumbers.length > 0) loadSurah();
 });
 
-// --- تصدير / استيراد ملف القواعد ---
+// --- تصدير / استيراد ملف المصحف الكامل (قواعد الكلمات + إعدادات ميم الجمع + الاسم) ---
+const mushafNameInputEl = document.getElementById('mushafNameInput');
+let currentMushafName = mushafNameInputEl ? mushafNameInputEl.value.trim() : 'مصحف';
+if (mushafNameInputEl) mushafNameInputEl.addEventListener('change', () => { currentMushafName = mushafNameInputEl.value.trim() || 'مصحف'; });
+
 exportRulesBtn.addEventListener('click', () => {
-  if (!wordRules.length) { alert('لا توجد قواعد لتصديرها بعد'); return; }
-  const blob = new Blob([JSON.stringify(wordRules, null, 2)], { type: 'application/json;charset=utf-8' });
+  if (!wordRules.length && !meemJamaExceptions.length) { alert('لا توجد قواعد أو إعدادات لتصديرها بعد'); return; }
+  const profile = { mushafName: currentMushafName, wordRules, meemJama: { enabled: meemJamaEnabled, exceptions: meemJamaExceptions } };
+  const blob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob); const a = document.createElement('a');
-  a.href = url; a.download = `قواعد_تعديل_الكلمات_${new Date().toISOString().slice(0, 10)}.json`;
+  a.href = url; a.download = `${currentMushafName || 'مصحف'}_${new Date().toISOString().slice(0, 10)}.json`;
   a.click(); URL.revokeObjectURL(url);
 });
 importRulesBtn.addEventListener('click', () => importRulesFile.click());
@@ -929,9 +940,22 @@ importRulesFile.addEventListener('change', () => {
   reader.onload = () => {
     let parsed;
     try { parsed = JSON.parse(reader.result); } catch (e) { alert('ملف غير صالح — لازم يكون ملف JSON تم تصديره من نفس الأداة'); importRulesFile.value = ''; return; }
-    if (!Array.isArray(parsed)) { alert('ملف غير صالح — لازم يكون ملف JSON تم تصديره من نفس الأداة'); importRulesFile.value = ''; return; }
-    const replace = confirm(`الملف فيه ${parsed.length} قاعدة.\nاضغط "موافق" للاستبدال الكامل للقواعد الحالية (${wordRules.length}).\nاضغط "إلغاء" للدمج مع القواعد الحالية بدل الاستبدال.`);
-    wordRules = replace ? parsed : wordRules.concat(parsed);
+    // صيغة قديمة: مصفوفة قواعد بس (من نسخة سابقة للأداة قبل ما نضيف ملف المصحف الكامل)
+    // صيغة جديدة: كائن فيه { mushafName, wordRules, meemJama }
+    let importedRules; let importedMeemJama = null; let importedName = null;
+    if (Array.isArray(parsed)) { importedRules = parsed; }
+    else if (parsed && Array.isArray(parsed.wordRules)) { importedRules = parsed.wordRules; importedMeemJama = parsed.meemJama || null; importedName = parsed.mushafName || null; }
+    else { alert('ملف غير صالح — لازم يكون ملف JSON تم تصديره من نفس الأداة'); importRulesFile.value = ''; return; }
+    const replace = confirm(`الملف فيه ${importedRules.length} قاعدة.\nاضغط "موافق" للاستبدال الكامل للقواعد الحالية (${wordRules.length}).\nاضغط "إلغاء" للدمج مع القواعد الحالية بدل الاستبدال.`);
+    wordRules = replace ? importedRules : wordRules.concat(importedRules);
+    if (importedMeemJama && replace) {
+      if (typeof importedMeemJama.enabled === 'boolean') meemJamaEnabled = importedMeemJama.enabled;
+      if (Array.isArray(importedMeemJama.exceptions)) meemJamaExceptions = importedMeemJama.exceptions;
+      if (meemJamaToggleEl) meemJamaToggleEl.checked = meemJamaEnabled;
+      if (meemJamaExceptionsBoxEl) meemJamaExceptionsBoxEl.value = meemJamaExceptions.join(', ');
+      saveMeemJamaToLocalStorage();
+    }
+    if (importedName && mushafNameInputEl) { currentMushafName = importedName; mushafNameInputEl.value = importedName; }
     renderWordRulesList(); saveRulesToLocalStorage(); importRulesFile.value = '';
     if (pageNumbers.length > 0) loadSurah();
   };

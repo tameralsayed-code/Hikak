@@ -1,23 +1,31 @@
 /*
  * tajweed-rules-engine.js
- * محرك قواعد الرسم القرآني المشترك — مستقل عن أي مصحف بعينه (البزي أو غيره لاحقًا).
+ * محرك قواعد الرسم القرآني المشترك — مستقل عن أي مصحف أو رواية بعينها.
+ *
+ * ده محرك بحث/استبدال خام بس: بياخد قواعد كلمات (نص أصلي → نص جديد، أو تلوين/معنى) ويطبّقها
+ * على مصفوفة كلمات. مفيهوش أي افتراض عن الوصل أو ميم الجمع أو أي سلوك تجويدي — ده كله
+ * خاص بكل رواية على حدة وبيتحط في ملفها (زي mushafs/bazzi-rules.js).
+ *
+ * لو رواية معينة محتاجة سلوك إضافي وقت تطبيق قاعدة (زي: افحص الكلمة التالية قبل ما تطبّق)،
+ * تقدر تمرّر onNewTextApplied في الـ options — دالة بتاخد (nextItem, currentItem) وترجع
+ * { skip, softenedNextText } — والمحرك هيستخدمها بس لو اتمررت، من غير أي منطق مدمج جواه.
  *
  * ده ملف "منطق خالص" (pure functions): مفيهوش تخزين (localStorage) ولا واجهة (HTML/CSS)
- * ولا بيانات آيات. كل دالة بتاخد الحالة اللي محتاجاها (قواعد الكلمات، إعدادات ميم الجمع)
- * كباراميتر، عشان كل مشروع مصحف يفضل مالك بياناته وتخزينه وواجهته بنفسه، وميحصلش تعارض
- * لو أكتر من مصحف شغالين على نفس الدومين (GitHub Pages مثلاً).
+ * ولا بيانات آيات. كل دالة بتاخد الحالة اللي محتاجاها (قواعد الكلمات) كباراميتر، عشان كل
+ * مشروع مصحف يفضل مالك بياناته وتخزينه وواجهته بنفسه.
  *
  * الاستخدام في أي مصحف جديد:
  *   <script src="tajweed-rules-engine.js"></script>
  *   ...
  *   TajweedEngine.applyWordRules(flatItems, surahNum, wordRules);
- *   TajweedEngine.applyMeemJamaRule(flatItems, surahNum, { enabled: meemJamaEnabled, exceptions: meemJamaExceptions });
+ *   // أو مع hook خاص برواية معينة:
+ *   TajweedEngine.applyWordRules(flatItems, surahNum, wordRules, { onNewTextApplied: myHook });
  *
  * "flatItems" = مصفوفة كائنات كل واحد فيها: { text, ayah, wordPos, hidden, displayText, code, ... }
  * وهو نفس الشكل اللي كل مصاحف المشروع (البزي وغيره) بتستخدمه للكلمة الواحدة.
  *
- * عدّل هنا مرة واحدة لما تكتشف حالة تجويدية جديدة أو تصليح باج، وكل المصاحف اللي بتستخدم
- * نسخة محدّثة من الملف ده بتاخد التعديل تلقائيًا.
+ * عدّل هنا مرة واحدة لما تكتشف تصليح باج في آلية البحث/الاستبدال نفسها (مش قاعدة رواية-خاصة)،
+ * وكل المصاحف اللي بتستخدم نسخة محدّثة من الملف ده بتاخد التعديل تلقائيًا.
  */
 const TajweedEngine = (function () {
 
@@ -39,37 +47,12 @@ const TajweedEngine = (function () {
     return (raw || '').split(/[,\n]/).map(s => s.trim()).filter(Boolean);
   }
 
-  // --- آخر حرف عربي فعلي في النص (متجاهلين أي تشكيل بعده)، مع توحيد صور الهمزة على الألف لألف عادية ---
-  function lastArabicLetterOf(text) {
-    const m = (text || '').match(/[\u0621-\u064A\u0671-\u06D3](?=[^\u0621-\u064A\u0671-\u06D3]*$)/);
-    return m ? m[0].replace(/[\u0622\u0623\u0625\u0671]/, '\u0627') : '';
-  }
-
-  // --- منطق مشترك لصلة ميم الجمع (ولأي كلمة تانية بتاخد ضمة/صلة زيها) ---
-  // بيفحص الكلمة اللي جاية بعد كلمة اتضاف لها ضمة/صلة، ويرجع:
-  //  - هل نتخطى القاعدة هنا؟ (لو الكلمة التالية بتبدأ بساكن صريح أو بألف وصل)
-  //  - ولو مش هنتخطى: هل نلطّف شدة أول حرف في الكلمة التالية؟ (لو ناتجة عن إدغام الحرف الساكن
-  //    الأصلي في نفس الحرف في أول الكلمة اللي بعدها — إدغام المتماثلين اللي بقى مش متحقق شرطه
-  //    بعد ما حوّلنا الحرف الساكن لمتحرك)
-  // ملحوظة: التشكيل في بيانات مصحف المدينة/API بييجي بترتيب حرف←حركة←شدة، مش حرف←شدة←حركة.
-  function evaluateWaslNeighbor(nextItem, lastLetterOfCurrent) {
-    if (!nextItem) return { skip: false };
-    const nextText = nextItem.text || '';
-    const nextStartsSakin = /^[\u0621-\u064A\u0671\u0672-\u06D3][\u0651]?\u0652/.test(nextText);
-    const nextStartsAlif = /^[\u0627\u0671]/.test(nextText);
-    if (nextStartsSakin || nextStartsAlif) return { skip: true };
-    const nextFirstLetter = nextText.charAt(0).replace(/[\u0622\u0623\u0625\u0671]/, '\u0627');
-    const shaddaRelIdx = nextText.slice(1, 3).indexOf('\u0651');
-    if (shaddaRelIdx !== -1 && lastLetterOfCurrent && lastLetterOfCurrent === nextFirstLetter) {
-      const shaddaAbsIdx = 1 + shaddaRelIdx;
-      return { skip: false, softenedNextText: nextText.slice(0, shaddaAbsIdx) + nextText.slice(shaddaAbsIdx + 1) };
-    }
-    return { skip: false };
-  }
-
   // --- تطبيق قواعد الكلمات اليدوية (بحث واستبدال / تلوين / معنى) على مصفوفة كلمات سورة واحدة ---
   // wordRules: مصفوفة القواعد الخاصة بالمصحف اللي بينادي الدالة (كل مصحف عنده نسخته ومخزّنها بنفسه).
-  function applyWordRules(flatItems, surahNum, wordRules) {
+  // options.onNewTextApplied(nextItem, currentItem): hook اختياري (رواية-خاص) بيتنادى قبل تطبيق
+  // أي قاعدة فيها newText، وبيرجع { skip, softenedNextText } — لو من غيره، القاعدة بتتطبق عادي.
+  function applyWordRules(flatItems, surahNum, wordRules, options) {
+    const onNewTextApplied = (options && options.onNewTextApplied) || null;
     if (!wordRules || !wordRules.length || !flatItems.length) return;
     wordRules.forEach(r => { if (r.scope === 'all' || r.scope === surahNum) r.lastMatchCount = 0; });
     const applicable = wordRules.filter(r => r.scope === 'all' || r.scope === surahNum);
@@ -93,9 +76,9 @@ const TajweedEngine = (function () {
             const ayahKey = String(flatItems[i].ayah); const posKey = `${ayahKey}:${flatItems[i].wordPos}`;
             if (rule.manualExceptions.includes(ayahKey) || rule.manualExceptions.includes(posKey)) { continue; }
           }
-          if (rule.newText) {
+          if (rule.newText && onNewTextApplied) {
             const nextItem = flatItems[i + n];
-            const decision = evaluateWaslNeighbor(nextItem, lastArabicLetterOf(flatItems[i].text));
+            const decision = onNewTextApplied(nextItem, flatItems[i]) || {};
             if (decision.skip) { continue; }
             if (decision.softenedNextText) { nextItem.displayText = decision.softenedNextText; nextItem.code = ''; }
           }
@@ -128,41 +111,10 @@ const TajweedEngine = (function () {
     });
   }
 
-  // --- القاعدة العامة التلقائية: صلة ميم الجمع على كل كلمة تنتهي بـ"ـهُمْ/ـهِمْ/ـكُمْ/ـتُمْ" ---
-  const MEEM_JAMA_SUFFIX_RE = /[\u0647\u0643\u062A][\u064F\u0650]\u0645\u0652$/;
-  function isMeemJamaWord(text) { return MEEM_JAMA_SUFFIX_RE.test(text || ''); }
-  function buildMeemJamaDisplay(text) {
-    // بيبدّل السكون على الميم بضمة، وبيضيف واو الصلة الصغيرة (ۥ) بعدها مباشرة
-    return (text || '').replace(/\u0652$/, '\u064F') + '\u06E5';
-  }
-  // options: { enabled: boolean, exceptions: string[] } — كل مصحف بيمرّر إعداداته الخاصة (ومخزّنها بنفسه).
-  function applyMeemJamaRule(flatItems, surahNum, options) {
-    const opts = options || {};
-    if (!opts.enabled || !flatItems.length) return;
-    const exceptions = opts.exceptions || [];
-    for (let i = 0; i < flatItems.length; i++) {
-      const item = flatItems[i];
-      if (item.hidden || item.displayText) continue; // كلمة اتغيرت بالفعل بقاعدة يدوية — نسيبها زي ما القاعدة اليدوية عملتها
-      if (!isMeemJamaWord(item.text)) continue;
-      const ayahKey = String(item.ayah); const posKey = `${ayahKey}:${item.wordPos}`;
-      if (exceptions.includes(ayahKey) || exceptions.includes(posKey)) continue;
-      const nextItem = flatItems[i + 1];
-      const decision = evaluateWaslNeighbor(nextItem, lastArabicLetterOf(item.text));
-      if (decision.skip) continue;
-      if (decision.softenedNextText) { nextItem.displayText = decision.softenedNextText; nextItem.code = ''; }
-      item.displayText = buildMeemJamaDisplay(item.text); item.code = '';
-    }
-  }
-
   return {
     normalizeArabic,
     parseManualExceptions,
-    lastArabicLetterOf,
-    evaluateWaslNeighbor,
     applyWordRules,
-    isMeemJamaWord,
-    buildMeemJamaDisplay,
-    applyMeemJamaRule,
   };
 })();
 
