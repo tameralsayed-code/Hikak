@@ -310,7 +310,7 @@
       <div class="word-edit-row">
         <input type="text" id="mushafNameInput" placeholder="اسم المصحف (يُستخدم في اسم ملف التصدير) — مثال: مصحف البزي" value="مصحف البزي">
       </div>
-      <div class="word-edit-hint">💡 نظام العمل بين المصاحف: كل مصحف (البزي، وغيره لاحقًا) له ملف واحد بصيغة JSON فيه كل قواعده وإعداداته. لما تيجي تشتغل على مصحف معين، اضغط "استيراد ملف مصحف" واختاره — هيحمّل كل قواعده وإعدادات ميم الجمع دفعة واحدة في نفس الأداة دي. وبعد ما تخلّص مراجعة/تعديل، اضغط "⬇️ تصدير ملف المصحف" عشان تحفظ نسخة محدّثة من ملف المصحف ده (JSON، للرجوع له بعدين)، ثم استخدم زرار "تحميل نسخة أوفلاين" الموجود تحت عشان تصدّر المصحف النهائي (HTML) اللي هتنشره.</div>
+      <div class="word-edit-hint">💡 نظام العمل بين المصاحف: كل مصحف (البزي، وغيره لاحقًا) له ملف واحد بصيغة JSON فيه كل قواعده. لما تيجي تشتغل على مصحف معين، اضغط "استيراد ملف مصحف" واختاره — هيحمّل كل قواعده دفعة واحدة في نفس الأداة دي. وبعد ما تخلّص مراجعة/تعديل، اضغط "⬇️ تصدير ملف المصحف" عشان تحفظ نسخة محدّثة من ملف المصحف ده (JSON، للرجوع له بعدين)، ثم استخدم زرار "تحميل نسخة أوفلاين" الموجود تحت عشان تصدّر المصحف النهائي (HTML) اللي هتنشره.</div>
     </div>
   </details>
 
@@ -330,19 +330,6 @@
       </div>
       <div class="word-edit-hint">💡 اكتب الكلمة زي ما هي بحروفها، وبعدين نفس الكلمة في الخانة اللي جنبها بس بتشكيل مختلف. الكلمة هترسم بخط عادي مش برسم المصحف الدقيق، لأن رسمة المصحف مبنية بس للكلمات الأصلية.</div>
       <div class="word-edit-hint">💡 القاعدة بتتخطى تلقائيًا أي موضع الكلمة اللي بعده بتبدأ بحرف ساكن أو ألف. مربع "استثناءات يدوية" ده لإضافة مواضع زيادة برضه عايز تستثنيها بنفسك — اكتب رقم الآية لتستثني الآية كلها، أو "آية:رقم_كلمة" لتستثني كلمة بعينها فيها (رقم الكلمة يظهر لك لو فتحت "قواعد الكلمات" وبصيت على الموضع).</div>
-    </div>
-  </details>
-
-  <details class="word-edit-panel" open>
-    <summary><h2>🔗 صلة ميم الجمع (قاعدة عامة تلقائية)</h2><span class="summary-chevron">▾</span></summary>
-    <div class="word-edit-body">
-      <div class="word-edit-row">
-        <label class="meem-jama-toggle"><input type="checkbox" id="meemJamaToggle" checked> فعّل الصلة تلقائيًا على كل كلمة منتهية بـ"ـهُمْ / ـهِمْ / ـكُمْ / ـتُمْ" في المصحف كله (زي قُلُوبِهِمُۥ)</label>
-      </div>
-      <div class="word-edit-row">
-        <input type="text" id="meemJamaExceptionsBox" class="exceptions-box" placeholder="🚫 استثناءات القاعدة العامة (اختياري): رقم آية أو آية:رقم_كلمة، مفصولة بفواصل — مثال: 10, 45:7">
-      </div>
-      <div class="word-edit-hint">💡 القاعدة دي بتشتغل على كل المصحف من غير ما تحتاج تضيف كلمة كلمة، وبتستخدم نفس منطق تخطي الساكن/الألف وتلطيف الشدة اللي شغال مع قواعد الكلمات اليدوية. أي كلمة اتغيّرت بالفعل بقاعدة يدوية (من اللوحات اللي فوق) بتتجاهلها القاعدة العامة عشان متتعارضش معاها.</div>
     </div>
   </details>
 
@@ -425,20 +412,11 @@ async function ensureV2PageFont(pageNum){
 }
 
 // --- محرك القواعد المشترك محمّل من tajweed-rules-engine.js (منفصل عشان يُستخدم في مصاحف تانية غير البزي لاحقًا) ---
-// المصحف ده لسه مالك بياناته الخاصة (wordRules) وإعداداته (meemJamaEnabled/Exceptions) وتخزينه بنفسه؛
-// بس منطق التطبيق نفسه (applyWordRules / applyMeemJamaRule / إلخ) جوه TajweedEngine المشترك.
+// المصحف ده لسه مالك بياناته الخاصة (wordRules) وتخزينه بنفسه؛
+// بس منطق التطبيق نفسه (applyWordRules / إلخ) جوه TajweedEngine المشترك.
 function normalizeArabic(text){ return TajweedEngine.normalizeArabic(text); }
 function parseManualExceptions(raw){ return TajweedEngine.parseManualExceptions(raw); }
 function applyWordRules(flatItems, surahNum){ BazziRules.applyWordRules(flatItems, surahNum, wordRules); }
-
-// --- القاعدة العامة التلقائية: صلة ميم الجمع على كل كلمة تنتهي بـ"ـهُمْ/ـهِمْ/ـكُمْ/ـتُمْ" في المصحف كله ---
-// ده سلوك خاص برواية البزي بس (منطقه الفعلي جوه mushafs/bazzi-rules.js، مش جوه المحرك المشترك)
-// بتتفعّل/تتوقف من المفتاح meemJamaEnabled.
-let meemJamaEnabled = true;
-let meemJamaExceptions = []; // نفس صيغة استثناءات القواعد: "7" (آية كاملة) أو "7:3" (آية:كلمة)
-function applyMeemJamaRule(flatItems, surahNum){
-  BazziRules.applyMeemJamaRule(flatItems, surahNum, { enabled: meemJamaEnabled, exceptions: meemJamaExceptions });
-}
 
 // تعديل حجم الخط (بدل Scale) لمنع الانضغاط واحتفاظ الآيات بشكلها الدائري
 // ملاحظة: يتم حساب نسبة تصغير واحدة موحّدة لكل الصفحة (بدل كل سطر على حدة)
@@ -597,7 +575,6 @@ function renderMushafExactly(verses, surahName, hasBismillah, surahNum) {
   });
 
   applyWordRules(flatWordItems, surahNum);
-  applyMeemJamaRule(flatWordItems, surahNum);
   pageNumbers = Object.keys(pagesData).map(Number).sort((a, b) => a - b); currentPageIndex = 0;
 
   if (pageNumbers.length > 0) {
@@ -746,6 +723,19 @@ const exportRulesBtn = document.getElementById('exportRulesBtn'); const importRu
 // --- حفظ تلقائي محلي (localStorage) عشان القواعد متضيعش لو قفلت الصفحة بالغلط ---
 const RULES_STORAGE_KEY = 'bazzi_word_rules_v1';
 const MEEM_JAMA_STORAGE_KEY = 'bazzi_meem_jama_v1';
+
+// --- تصفير مرة واحدة: مسح أي قواعد كلمات محفوظة سابقًا في متصفح المستخدم ---
+// (بيتنفذ مرة واحدة بس بفضل علامة RESET_DONE_KEY، عشان مايمسحش قواعد المستخدم الجديدة في الزيارات الجاية)
+const RESET_DONE_KEY = 'bazzi_rules_reset_done_v1';
+try {
+  if (!localStorage.getItem(RESET_DONE_KEY)) {
+    localStorage.removeItem(RULES_STORAGE_KEY);
+    localStorage.removeItem(MEEM_JAMA_STORAGE_KEY);
+    localStorage.removeItem('mushaf_word_rules_v1');
+    localStorage.removeItem('mushaf_meem_jama_v1');
+    localStorage.setItem(RESET_DONE_KEY, '1');
+  }
+} catch (e) { /* لو التخزين محظور، نتجاهل بهدوء */ }
 function saveRulesToLocalStorage(){
   try { localStorage.setItem(RULES_STORAGE_KEY, JSON.stringify(wordRules)); } catch (e) { /* لو التخزين ممتلئ أو محظور، نتجاهل بهدوء */ }
 }
@@ -763,34 +753,6 @@ function loadRulesFromLocalStorage(){
   } catch (e) { /* تجاهل أي ملف تالف */ }
 }
 loadRulesFromLocalStorage();
-function saveMeemJamaToLocalStorage(){
-  try { localStorage.setItem(MEEM_JAMA_STORAGE_KEY, JSON.stringify({ enabled: meemJamaEnabled, exceptions: meemJamaExceptions })); } catch (e) { /* تجاهل بهدوء */ }
-}
-function loadMeemJamaFromLocalStorage(){
-  try {
-    let raw = localStorage.getItem(MEEM_JAMA_STORAGE_KEY);
-    if (!raw) {
-      const legacy = localStorage.getItem('mushaf_meem_jama_v1');
-      if (legacy) { raw = legacy; localStorage.setItem(MEEM_JAMA_STORAGE_KEY, legacy); }
-    }
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.enabled === 'boolean') meemJamaEnabled = parsed.enabled;
-    if (Array.isArray(parsed.exceptions)) meemJamaExceptions = parsed.exceptions;
-  } catch (e) { /* تجاهل أي ملف تالف */ }
-}
-loadMeemJamaFromLocalStorage();
-const meemJamaToggleEl = document.getElementById('meemJamaToggle'); const meemJamaExceptionsBoxEl = document.getElementById('meemJamaExceptionsBox');
-if (meemJamaToggleEl) meemJamaToggleEl.checked = meemJamaEnabled;
-if (meemJamaExceptionsBoxEl) meemJamaExceptionsBoxEl.value = meemJamaExceptions.join(', ');
-if (meemJamaToggleEl) meemJamaToggleEl.addEventListener('change', () => {
-  meemJamaEnabled = meemJamaToggleEl.checked; saveMeemJamaToLocalStorage();
-  if (pageNumbers.length > 0) loadSurah();
-});
-if (meemJamaExceptionsBoxEl) meemJamaExceptionsBoxEl.addEventListener('change', () => {
-  meemJamaExceptions = parseManualExceptions(meemJamaExceptionsBoxEl.value); saveMeemJamaToLocalStorage();
-  if (pageNumbers.length > 0) loadSurah();
-});
 
 function openRulesSheet(){ rulesSheetOverlay.classList.add('open'); rulesSearchInput.value = ''; renderWordRulesList(); rulesSearchInput.focus(); }
 function closeRulesSheet(){ rulesSheetOverlay.classList.remove('open'); }
@@ -920,14 +882,14 @@ rulesSheetBody.addEventListener('click', (e) => {
   if (pageNumbers.length > 0) loadSurah();
 });
 
-// --- تصدير / استيراد ملف المصحف الكامل (قواعد الكلمات + إعدادات ميم الجمع + الاسم) ---
+// --- تصدير / استيراد ملف المصحف الكامل (قواعد الكلمات + الاسم) ---
 const mushafNameInputEl = document.getElementById('mushafNameInput');
 let currentMushafName = mushafNameInputEl ? mushafNameInputEl.value.trim() : 'مصحف';
 if (mushafNameInputEl) mushafNameInputEl.addEventListener('change', () => { currentMushafName = mushafNameInputEl.value.trim() || 'مصحف'; });
 
 exportRulesBtn.addEventListener('click', () => {
-  if (!wordRules.length && !meemJamaExceptions.length) { alert('لا توجد قواعد أو إعدادات لتصديرها بعد'); return; }
-  const profile = { mushafName: currentMushafName, wordRules, meemJama: { enabled: meemJamaEnabled, exceptions: meemJamaExceptions } };
+  if (!wordRules.length) { alert('لا توجد قواعد لتصديرها بعد'); return; }
+  const profile = { mushafName: currentMushafName, wordRules };
   const blob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob); const a = document.createElement('a');
   a.href = url; a.download = `${currentMushafName || 'مصحف'}_${new Date().toISOString().slice(0, 10)}.json`;
@@ -941,20 +903,13 @@ importRulesFile.addEventListener('change', () => {
     let parsed;
     try { parsed = JSON.parse(reader.result); } catch (e) { alert('ملف غير صالح — لازم يكون ملف JSON تم تصديره من نفس الأداة'); importRulesFile.value = ''; return; }
     // صيغة قديمة: مصفوفة قواعد بس (من نسخة سابقة للأداة قبل ما نضيف ملف المصحف الكامل)
-    // صيغة جديدة: كائن فيه { mushafName, wordRules, meemJama }
-    let importedRules; let importedMeemJama = null; let importedName = null;
+    // صيغة جديدة: كائن فيه { mushafName, wordRules }
+    let importedRules; let importedName = null;
     if (Array.isArray(parsed)) { importedRules = parsed; }
-    else if (parsed && Array.isArray(parsed.wordRules)) { importedRules = parsed.wordRules; importedMeemJama = parsed.meemJama || null; importedName = parsed.mushafName || null; }
+    else if (parsed && Array.isArray(parsed.wordRules)) { importedRules = parsed.wordRules; importedName = parsed.mushafName || null; }
     else { alert('ملف غير صالح — لازم يكون ملف JSON تم تصديره من نفس الأداة'); importRulesFile.value = ''; return; }
     const replace = confirm(`الملف فيه ${importedRules.length} قاعدة.\nاضغط "موافق" للاستبدال الكامل للقواعد الحالية (${wordRules.length}).\nاضغط "إلغاء" للدمج مع القواعد الحالية بدل الاستبدال.`);
     wordRules = replace ? importedRules : wordRules.concat(importedRules);
-    if (importedMeemJama && replace) {
-      if (typeof importedMeemJama.enabled === 'boolean') meemJamaEnabled = importedMeemJama.enabled;
-      if (Array.isArray(importedMeemJama.exceptions)) meemJamaExceptions = importedMeemJama.exceptions;
-      if (meemJamaToggleEl) meemJamaToggleEl.checked = meemJamaEnabled;
-      if (meemJamaExceptionsBoxEl) meemJamaExceptionsBoxEl.value = meemJamaExceptions.join(', ');
-      saveMeemJamaToLocalStorage();
-    }
     if (importedName && mushafNameInputEl) { currentMushafName = importedName; mushafNameInputEl.value = importedName; }
     renderWordRulesList(); saveRulesToLocalStorage(); importRulesFile.value = '';
     if (pageNumbers.length > 0) loadSurah();
@@ -1265,7 +1220,6 @@ downloadFullBtn.addEventListener('click', async () => {
         });
       });
       applyWordRules(flatWordItemsThisSurah, n);
-      applyMeemJamaRule(flatWordItemsThisSurah, n);
 
       const surahWords = allVerses.flatMap(v => v.words);
       const surahPageNums = [...new Set(surahWords.map(w => w.page_number))].sort((a, b) => a - b);
