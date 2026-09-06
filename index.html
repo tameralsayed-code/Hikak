@@ -307,10 +307,15 @@
         <button class="btn btn-outline" id="importRulesBtn" type="button">⬆️ استيراد ملف مصحف</button>
         <input type="file" id="importRulesFile" accept="application/json" style="display:none;">
       </div>
+      <div class="rules-trigger-row">
+        <button class="btn btn-outline" id="importRiwayaBtn" type="button">📥 استيراد ملف القراءة (JS)</button>
+        <input type="file" id="importRiwayaFile" accept=".js,text/javascript" style="display:none;">
+        <span id="riwayaNameLabel" style="font-size:.75rem;color:#8fa6c2;">لا توجد قراءة محمّلة (شغال بمنطق افتراضي عام)</span>
+      </div>
       <div class="word-edit-row">
         <input type="text" id="mushafNameInput" placeholder="اسم المصحف (يُستخدم في اسم ملف التصدير) — مثال: مصحف البزي" value="مصحف البزي">
       </div>
-      <div class="word-edit-hint">💡 نظام العمل بين المصاحف: كل مصحف (البزي، وغيره لاحقًا) له ملف واحد بصيغة JSON فيه كل قواعده. لما تيجي تشتغل على مصحف معين، اضغط "استيراد ملف مصحف" واختاره — هيحمّل كل قواعده دفعة واحدة في نفس الأداة دي. وبعد ما تخلّص مراجعة/تعديل، اضغط "⬇️ تصدير ملف المصحف" عشان تحفظ نسخة محدّثة من ملف المصحف ده (JSON، للرجوع له بعدين)، ثم استخدم زرار "تحميل نسخة أوفلاين" الموجود تحت عشان تصدّر المصحف النهائي (HTML) اللي هتنشره.</div>
+      <div class="word-edit-hint">💡 نظام العمل بين المصاحف: كل قراءة (البزي، حفص، ورش...) لها ملف JS منفصل فيه منطقها الخاص (زي فحص الوصل). اضغط "استيراد ملف القراءة (JS)" واختر الملف المناسب — هيتفعّل فورًا بدون ما تحتاج ترتيب مجلدات معيّن. الملف المستقل ده منفصل عن ملف قواعد الكلمات (JSON) اللي بتستورده/تصدّره بزرار "استيراد/تصدير ملف مصحف".</div>
     </div>
   </details>
 
@@ -354,7 +359,11 @@
   </div>
 
 <script src="tajweed-rules-engine.js"></script>
-<script src="mushafs/bazzi-rules.js"></script>
+<!-- ملف منطق القراءة (مثل bazzi-rules.js) بقى بيتحمّل ديناميكيًا بزرار "استيراد ملف القراءة"، مش بمسار ثابت هنا -->
+<!-- الملف المستورد لازم يعرّف window.RiwayaRules، عشان الكود يقدر يستخدمه بعد الاستيراد مباشرة -->
+<script>
+  window.RiwayaRules = null; // لحد ما يتم استيراد ملف قراءة
+</script>
 <script>
 // --- المتغيرات العامة ---
 const state = { activeColor: '#8b1e1e', mode: 'bg', clickScope: 'single' };
@@ -416,7 +425,15 @@ async function ensureV2PageFont(pageNum){
 // بس منطق التطبيق نفسه (applyWordRules / إلخ) جوه TajweedEngine المشترك.
 function normalizeArabic(text){ return TajweedEngine.normalizeArabic(text); }
 function parseManualExceptions(raw){ return TajweedEngine.parseManualExceptions(raw); }
-function applyWordRules(flatItems, surahNum){ BazziRules.applyWordRules(flatItems, surahNum, wordRules); }
+// لو فيه ملف قراءة متحمّل (window.RiwayaRules) بيستخدمه (فيه منطق خاص بالرواية زي فحص الوصل)،
+// ولو لسه مفيش قراءة متحمّلة بيشتغل بالمحرك العام المشترك بس (بدون أي سلوك رواية-خاص).
+function applyWordRules(flatItems, surahNum){
+  if (window.RiwayaRules && typeof window.RiwayaRules.applyWordRules === 'function') {
+    window.RiwayaRules.applyWordRules(flatItems, surahNum, wordRules);
+  } else {
+    TajweedEngine.applyWordRules(flatItems, surahNum, wordRules);
+  }
+}
 
 // تعديل حجم الخط (بدل Scale) لمنع الانضغاط واحتفاظ الآيات بشكلها الدائري
 // ملاحظة: يتم حساب نسبة تصغير واحدة موحّدة لكل الصفحة (بدل كل سطر على حدة)
@@ -912,6 +929,40 @@ importRulesFile.addEventListener('change', () => {
     wordRules = replace ? importedRules : wordRules.concat(importedRules);
     if (importedName && mushafNameInputEl) { currentMushafName = importedName; mushafNameInputEl.value = importedName; }
     renderWordRulesList(); saveRulesToLocalStorage(); importRulesFile.value = '';
+    if (pageNumbers.length > 0) loadSurah();
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+// --- استيراد ملف "القراءة" (منطق برمجي خاص برواية معينة، زي bazzi-rules.js) ---
+// الملف ده لازم يعرّف window.RiwayaRules في آخره (بدل الأسماء الثابتة القديمة زي BazziRules)،
+// عشان كل مرة تستورد ملف قراءة جديد يستبدل القديم فورًا من غير ما تحتاج ترتيب مجلدات معيّن.
+const importRiwayaBtn = document.getElementById('importRiwayaBtn');
+const importRiwayaFile = document.getElementById('importRiwayaFile');
+const riwayaNameLabel = document.getElementById('riwayaNameLabel');
+importRiwayaBtn.addEventListener('click', () => importRiwayaFile.click());
+importRiwayaFile.addEventListener('change', () => {
+  const file = importRiwayaFile.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      window.RiwayaRules = null; // نصفّر الأول عشان لو الملف فيه خطأ نلاحظ إنه محملش
+      const oldScript = document.getElementById('riwayaRulesScript');
+      if (oldScript) oldScript.remove();
+      const script = document.createElement('script');
+      script.id = 'riwayaRulesScript';
+      script.textContent = reader.result;
+      document.body.appendChild(script);
+      if (!window.RiwayaRules || typeof window.RiwayaRules.applyWordRules !== 'function') {
+        riwayaNameLabel.textContent = '⚠️ الملف لم يُعرّف window.RiwayaRules بشكل صحيح';
+      } else {
+        riwayaNameLabel.textContent = `✅ القراءة الحالية: ${file.name.replace(/\.js$/i, '')}`;
+      }
+    } catch (e) {
+      window.RiwayaRules = null;
+      riwayaNameLabel.textContent = '⚠️ فشل تحميل ملف القراءة: ' + e.message;
+    }
+    importRiwayaFile.value = '';
     if (pageNumbers.length > 0) loadSurah();
   };
   reader.readAsText(file, 'utf-8');
