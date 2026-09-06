@@ -94,12 +94,12 @@
   .slider-window { width: 100vw; max-width: 850px; height: 100vh; max-height: 100vh; margin: 0 auto; overflow-x: auto; overflow-y: hidden; touch-action: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); background-color: var(--page-c2); scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; will-change: scroll-position; }
   .slider-track { display: flex; flex-direction: row; gap: 0; height: 100vh; width: max-content; cursor: default; align-items: stretch; }
   .mushaf-page { flex: 0 0 100vw; max-width: 850px; height: 100vh; max-height: 100vh; padding: 0; box-sizing: border-box; display: flex; flex-direction: column; scroll-snap-align: start; overflow: hidden; content-visibility: auto; contain-intrinsic-size: auto 100vh; contain: layout style paint; }
-  .mushaf-wrapper { background-image: radial-gradient(circle at center, var(--page-c1) 0%, var(--page-c2) 60%, var(--page-c3) 100%); padding: 2px 6px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: visible; overflow-y: hidden; }
-  .mushaf-frame { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-x: visible; overflow-y: hidden; }
+  .mushaf-wrapper { background-image: radial-gradient(circle at center, var(--page-c1) 0%, var(--page-c2) 60%, var(--page-c3) 100%); padding: 2px 6px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: visible; }
+  .mushaf-frame { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: visible; }
   .mushaf-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0px; margin-bottom: 4px; font-weight: 600; color: #9299a3; font-size: clamp(11px, 2.2vw, 14px); flex-shrink: 0; }
   .mushaf-footer { text-align: center; padding-top: 0; margin-top: 4px; flex-shrink: 0; }
   .mushaf-footer .page-num { display: inline-flex; align-items: baseline; font-family: 'Cairo', sans-serif; color: #9299a3; font-size: clamp(12px, 2vw, 15px); font-weight: 600; }
-  .mushaf-content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0px; padding-bottom: 4px; overflow-x: visible; overflow-y: hidden; }
+  .mushaf-content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0px; padding-bottom: 4px; overflow: visible; }
 
   /* حل مشكلة الدوائر البيضاوية: تصغير الخط للأسطر الطويلة بدلاً من scale */
   .mushaf-line {
@@ -1538,11 +1538,11 @@ downloadFullBtn.addEventListener('click', async () => {
     .slider-window { max-width: 850px; width:100vw; height:100vh; max-height:100vh; margin:0 auto; overflow-x:auto; overflow-y:hidden; scroll-snap-type: x mandatory; box-shadow: 0 10px 40px rgba(0,0,0,0.35); scroll-behavior: smooth; background-color: var(--page-c2);}
     .slider-track { display: flex; flex-direction: row; width: max-content; gap: 0; height:100vh; align-items: stretch;}
     .mushaf-page { flex: 0 0 100vw; max-width: 850px; scroll-snap-align: start; overflow: hidden; display:flex; flex-direction:column; padding:0; height:100vh; contain: layout style paint;}
-    .mushaf-wrapper { background-image: radial-gradient(circle at center, var(--page-c1) 0%, var(--page-c2) 60%, var(--page-c3) 100%); padding: 2px 6px; flex: 1; display: flex; flex-direction: column; overflow-x: visible; overflow-y: hidden; }
-    .mushaf-frame { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; overflow-x: visible; overflow-y: hidden; }
+    .mushaf-wrapper { background-image: radial-gradient(circle at center, var(--page-c1) 0%, var(--page-c2) 60%, var(--page-c3) 100%); padding: 2px 6px; flex: 1; display: flex; flex-direction: column; overflow: visible; }
+    .mushaf-frame { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; overflow: visible; }
     .mushaf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-weight: 600; color: #9299a3; font-size: clamp(11px, 2.2vw, 14px); flex-shrink: 0; }
     .mushaf-footer { text-align: center; margin-top: 4px; flex-shrink: 0; } .mushaf-footer .page-num { display: inline-flex; align-items: baseline; color: #9299a3; font-size: clamp(12px, 2vw, 15px); font-weight: 600; }
-    .mushaf-content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0px; padding-bottom: 4px; overflow-x: visible; overflow-y: hidden; }
+    .mushaf-content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0px; padding-bottom: 4px; overflow: visible; }
     .mushaf-line { display: flex; justify-content: space-between; align-items: baseline; width: 100%; direction: rtl; font-family: var(--quran-font), serif; font-size: clamp(20px, 5.2vw, 38px); line-height: 1.65; color: var(--ink); white-space: nowrap; -webkit-text-stroke: 0.1px currentColor; text-stroke: 0.1px currentColor; }
     .mushaf-line.short { justify-content: flex-start; gap: 12px; } .mushaf-line .word { cursor:default; flex-shrink: 0; } .mushaf-line .word.word-replaced{ font-family: 'UthmanTahaNaskhReplaced', serif; display:inline-block; vertical-align: baseline; font-size: calc(1em * var(--replaced-scale, 0.84)); font-weight: var(--replaced-weight, 400); transform: translateY(var(--replaced-shift, 0.04em)); -webkit-text-stroke: 0.25px currentColor; text-stroke: 0.25px currentColor; }
     .surah-banner { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; background: #ffffff; border-top: 1.5px solid #0c7853; border-bottom: 1.5px solid #0c7853; width: 100%; margin: 8px 0 4px 0; box-sizing: border-box; }
