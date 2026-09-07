@@ -104,7 +104,7 @@
   /* حل مشكلة الدوائر البيضاوية: تصغير الخط للأسطر الطويلة بدلاً من scale */
   .mushaf-line {
     display: flex; justify-content: space-between; align-items: baseline; width: 100%; direction: rtl;
-        font-family: var(--quran-font), serif; font-size: clamp(20px, 5.2vw, 38px); line-height: 1.65; color: var(--ink);
+        font-family: var(--quran-font), serif; font-size: clamp(21px, 5.6vw, 40px); line-height: 1.5; color: var(--ink);
     white-space: nowrap; -webkit-text-stroke: 0.1px currentColor; text-stroke: 0.1px currentColor;
   }
   .mushaf-line.short { justify-content: flex-start; gap: 12px; }
@@ -112,7 +112,7 @@
   .surah-banner { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; background: #ffffff; border-top: 1.5px solid #0c7853; border-bottom: 1.5px solid #0c7853; width: 100%; overflow: visible; margin: 8px 0 4px 0; box-sizing: border-box; }
   .surah-banner-text { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; font-family: 'Cairo', sans-serif; font-size: clamp(16px, 2.8vw, 22px); font-weight: 600; color: #000000; background: #ffffff; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; white-space: nowrap; }
 
-  .bismillah { font-family: var(--quran-font), serif; font-weight: normal; font-size: clamp(26px, 5.5vw, 38px); text-align: center; white-space: nowrap; padding: 0; position: relative; z-index: 1; line-height: 1.2; color: #000000; }
+  .bismillah { font-family: var(--quran-font), serif; font-weight: normal; font-size: clamp(27px, 5.9vw, 40px); text-align: center; white-space: nowrap; padding: 0; position: relative; z-index: 1; line-height: 1.2; color: #000000; }
   .mushaf-line.bismillah-line{ justify-content: center; }
   .bismillah-wrap{ display: flex; align-items: center; justify-content: center; width: 100%; margin: 6px 0 12px 0; }
 
@@ -436,11 +436,16 @@ function applyWordRules(flatItems, surahNum){
 }
 
 // تعديل حجم الخط (بدل Scale) لمنع الانضغاط واحتفاظ الآيات بشكلها الدائري
-// ملاحظة: يتم حساب نسبة تصغير واحدة موحّدة لكل الصفحة (بدل كل سطر على حدة)
-// حتى لا تختلف مقاسات الكلمات بين الأسطر داخل نفس الصفحة.
-function fitPageUniform(page){
-  const lines = Array.from(page.querySelectorAll('.mushaf-line')).filter(l => !l.classList.contains('short') && !l.classList.contains('bismillah-line'));
-  if (!lines.length) { page.dataset.fitted = 'true'; return; }
+// ملاحظة مهمة: النسبة دي بقت محفوظة على مستوى المصحف كله (مش بس السورة المفتوحة حاليًا)،
+// عن طريق localStorage. يعني أول ما نفتح أي صفحة فيها سطر أطول من كل اللي شفناه قبل كده،
+// بيتسجّل أصغر نسبة تصغير مطلوبة وتتحفظ، وكل الصفحات (في كل السور، دلوقتي وبعدين) بتستخدم
+// بالظبط نفس النسبة دي — فمفيش صفحة تبان بخط أكبر من صفحة تانية أبدًا، وبردو الخط ميكبرش
+// تاني لو فتحنا سورة أسطرها قصيرة (عشان كده الثبات دايم في اتجاه واحد بس: تصغير، مش تكبير).
+const _idle = window.requestIdleCallback || function(cb){ return setTimeout(() => cb({ timeRemaining: () => 0 }), 16); };
+function _mushafRatioKey(){ return 'mushafUniformFontRatio__' + activeFont; }
+function fitAllPagesUniformly(){
+  const lines = Array.from(document.querySelectorAll('.mushaf-line')).filter(l => !l.classList.contains('short') && !l.classList.contains('bismillah-line'));
+  if (!lines.length) return;
   lines.forEach(l => { l.style.fontSize = ''; });
   let baseSize = null, minRatio = 1;
   lines.forEach(line => {
@@ -452,30 +457,27 @@ function fitPageUniform(page){
       if (ratio < minRatio) minRatio = ratio;
     }
   });
-  if (minRatio < 1 && baseSize) {
-    const finalSize = (baseSize * minRatio * 0.985) + 'px';
+  // نجيب أصغر نسبة اتسجلت قبل كده من أي صفحة اتفتحت في المصحف كله (مش بس السورة الحالية)،
+  // وناخد الأصغر بين النسبة المطلوبة دلوقتي والنسبة المحفوظة، عشان الحجم يفضل موحّد للأبد.
+  let storedRatio = 1;
+  try { const s = localStorage.getItem(_mushafRatioKey()); if (s) { const v = parseFloat(s); if (v > 0 && v <= 1) storedRatio = v; } } catch(e) {}
+  const finalRatio = Math.min(minRatio, storedRatio);
+  if (finalRatio < storedRatio) {
+    try { localStorage.setItem(_mushafRatioKey(), String(finalRatio)); } catch(e) {}
+  }
+  if (finalRatio < 1 && baseSize) {
+    const finalSize = (baseSize * finalRatio * 0.985) + 'px';
     lines.forEach(line => { line.style.fontSize = finalSize; });
   }
-  page.dataset.fitted = 'true';
+  document.querySelectorAll('.mushaf-page').forEach(p => { p.dataset.fitted = 'true'; });
 }
-const _idle = window.requestIdleCallback || function(cb){ return setTimeout(() => cb({ timeRemaining: () => 0 }), 16); };
-const pageObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      const page = entry.target;
-      if (page.dataset.fitted) return;
-      // نأجّل قياسات الـ layout (clientWidth/scrollWidth) لحد ما المتصفح يكون فاضي،
-      // عشان القفل السريع بين الصفحات (swipe) ميتعطلش بحساب مقاسات خط ثقيلة أثناء حركة السحب نفسها.
-      _idle(() => fitPageUniform(page));
-    }
-  });
-}, { root: document.getElementById('sliderWindow'), rootMargin: "150% 0px" });
+let _globalFitTimer;
+function scheduleGlobalFit(delay = 120){
+  clearTimeout(_globalFitTimer);
+  _globalFitTimer = setTimeout(() => { _idle(fitAllPagesUniformly); }, delay);
+}
+function fitJustifiedLines(){ scheduleGlobalFit(0); }
 
-function fitJustifiedLines(){
-  document.querySelectorAll('.mushaf-page').forEach(page => {
-    page.dataset.fitted = ''; pageObserver.unobserve(page); pageObserver.observe(page);
-  });
-}
 
 const surahNumEl = document.getElementById('surahNum'); const loadBtn = document.getElementById('loadBtn');
 const sliderTrack = document.getElementById('sliderTrack'); const statusEl = document.getElementById('status');
@@ -561,7 +563,7 @@ async function loadSurah(){
 }
 
 function renderMushafExactly(verses, surahName, hasBismillah, surahNum) {
-  const pagesData = {}; const pageJuz = {}; pageObserver.disconnect();
+  const pagesData = {}; const pageJuz = {};
   sliderTrack.innerHTML = ''; flatIdxCounter = 0; let lastWordPage = null, lastWordLine = null; const flatWordItems = []; 
 
   verses.forEach(verse => {
@@ -636,7 +638,8 @@ function renderMushafExactly(verses, surahName, hasBismillah, surahNum) {
                 span.style.fontFamily = `'p${item.page}-v2'`;
                 // بعد استبدال النص برمز الخط الدقيق ممكن يتغيّر عرض السطر، فنعيد الملاءمة لصفحته بعد ما الخط يستقر
                 const pageEl = span.closest('.mushaf-page');
-                if (pageEl) { pageEl.dataset.fitted = ''; _idle(() => fitPageUniform(pageEl)); }
+                if (pageEl) { pageEl.dataset.fitted = ''; }
+                scheduleGlobalFit();
               }
             });
           } else if (item.displayText) { renderWordInnerContent(span, item.displayText); span.classList.add('word-replaced'); }
@@ -687,7 +690,8 @@ function renderMushafExactly(verses, surahName, hasBismillah, surahNum) {
               if (res && res.ready && endSpan.isConnected) {
                 endSpan.className = 'ayah-end-qcf'; endSpan.textContent = item.codeV2; endSpan.style.fontFamily = `'p${item.page}-v2'`;
                 const pageEl = endSpan.closest('.mushaf-page');
-                if (pageEl) { pageEl.dataset.fitted = ''; _idle(() => fitPageUniform(pageEl)); }
+                if (pageEl) { pageEl.dataset.fitted = ''; }
+                scheduleGlobalFit();
               }
             });
           } else {
@@ -703,7 +707,6 @@ function renderMushafExactly(verses, surahName, hasBismillah, surahNum) {
     });
     const footer = document.createElement('div'); footer.className = 'mushaf-footer'; footer.innerHTML = `<span class="page-num">${toArabicDigits(pNum)}</span>`;
     frame.appendChild(header); frame.appendChild(content); frame.appendChild(footer); wrapper.appendChild(frame); pageDiv.appendChild(wrapper); sliderTrack.appendChild(pageDiv);
-    pageObserver.observe(pageDiv);
   });
 
   const zeroMatchRules = wordRules.filter(r => (r.scope === 'all' || r.scope === surahNum) && !r.lastMatchCount);
