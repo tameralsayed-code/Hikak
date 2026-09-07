@@ -1373,7 +1373,7 @@ downloadFullBtn.addEventListener('click', async () => {
     // بدل بناء كل الـ 604 صفحة دفعة واحدة عند فتح الملف (وده اللي كان بيسبب البطء عند الفتح)،
     // نبني فقط "حاويات فارغة" بالحجم الصحيح فورًا، ثم نبني محتوى كل صفحة فعليًا لما تقترب من الشاشة،
     // مع تعبئة الباقي في الخلفية بدون ما نعطّل التصفح.
-    var SILA_MARK_RE_X = /[\\u06E5\\u06E6]/;
+    var SILA_MARK_RE_X = /[\u06E5\u06E6]/;
     function renderWordInnerContentX(span, text){
       if (!text || !SILA_MARK_RE_X.test(text)) { span.textContent = text; return; }
       span.textContent = '';
@@ -1393,16 +1393,16 @@ downloadFullBtn.addEventListener('click', async () => {
       const wrapper = document.createElement('div'); wrapper.className = 'mushaf-wrapper';
       const frame = document.createElement('div'); frame.className = 'mushaf-frame';
       const header = document.createElement('div'); header.className = 'mushaf-header';
-      header.innerHTML = '<span>سورة ' + pd.sName + '<\\\\/span><span>' + pd.jz + '<\\\\/span>';
+      header.innerHTML = '<span>سورة ' + pd.sName + '<\\/span><span>' + pd.jz + '<\\/span>';
       const content = document.createElement('div'); content.className = 'mushaf-content';
 
       pd.lines.forEach(function(ln){
         const lineDiv = document.createElement('div'); lineDiv.className = 'mushaf-line';
         if (ln.t === 'b') {
-          lineDiv.innerHTML = '<div class="surah-banner"><span class="surah-banner-text">سُورَةُ ' + ln.name + '<\\\\/span><\\\\/div>';
+          lineDiv.innerHTML = '<div class="surah-banner"><span class="surah-banner-text">سُورَةُ ' + ln.name + '<\\/span><\\/div>';
           lineDiv.classList.add('short');
         } else if (ln.t === 'i') {
-          lineDiv.innerHTML = '<div class="bismillah-wrap"><div class="bismillah">بِسْـــــــمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيـــــــمِ<\\\\/div><\\\\/div>';
+          lineDiv.innerHTML = '<div class="bismillah-wrap"><div class="bismillah">بِسْـــــــمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيـــــــمِ<\\/div><\\/div>';
           lineDiv.classList.add('bismillah-line');
         } else {
           ln.it.forEach(function(item){
@@ -1442,7 +1442,7 @@ downloadFullBtn.addEventListener('click', async () => {
       });
 
       const footer = document.createElement('div'); footer.className = 'mushaf-footer';
-      footer.innerHTML = '<span class="page-num">' + pd.foot + '<\\\\/span>';
+      footer.innerHTML = '<span class="page-num">' + pd.foot + '<\\/span>';
       frame.appendChild(header); frame.appendChild(content); frame.appendChild(footer); wrapper.appendChild(frame); pageDiv.appendChild(wrapper);
       pageDiv.dataset.built = 'true';
     }
@@ -1540,7 +1540,7 @@ downloadFullBtn.addEventListener('click', async () => {
     .mushaf-footer { text-align: center; margin-top: 4px; flex-shrink: 0; } .mushaf-footer .page-num { display: inline-flex; align-items: baseline; color: #9299a3; font-size: clamp(12px, 2vw, 15px); font-weight: 600; }
     .mushaf-content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0px; padding-bottom: 4px; overflow: visible; }
     .mushaf-line { display: flex; justify-content: space-between; align-items: baseline; width: 100%; direction: rtl; font-family: var(--quran-font), serif; font-size: clamp(20px, 5.2vw, 38px); line-height: 1.65; color: var(--ink); white-space: nowrap; -webkit-text-stroke: 0.1px currentColor; text-stroke: 0.1px currentColor; }
-    .mushaf-line.short { justify-content: flex-start; gap: 12px; } .mushaf-line .word { cursor:default; margin:0 0.01em; flex-shrink: 0; } .mushaf-line .word.word-replaced{ font-family: var(--quran-font), serif; display:inline-block; vertical-align: baseline; margin: 0 0.01em; }
+    .mushaf-line.short { justify-content: flex-start; gap: 12px; } .mushaf-line .word { cursor:default; margin:0 0.01em; flex-shrink: 0; } 
     .surah-banner { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; background: #ffffff; border-top: 1.5px solid #0c7853; border-bottom: 1.5px solid #0c7853; width: 100%; margin: 8px 0 4px 0; box-sizing: border-box; }
     .surah-banner-text { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; font-size: clamp(16px, 2.8vw, 22px); font-weight: 600; color: #000000; background: #ffffff; padding: 0 18px; line-height: 1; white-space: nowrap; }
     .bismillah { font-family: var(--quran-font), serif; font-size: clamp(26px, 5.5vw, 38px); text-align: center; white-space: nowrap; padding: 0; position: relative; z-index: 1; line-height: 1.2; color: #000000; }
