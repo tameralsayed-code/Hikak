@@ -395,24 +395,28 @@ let activeFont = 'UthmanicHafs';
 // --- وضع "مطابق للمطبوع V2": كل صفحة من المصحف (604 صفحة) لها ملف خط مستقل
 // بيحوّل كل كلمة لرمز جرافيكي واحد مطابق تمامًا لرسم مصحف المدينة V2 الأصلي.
 function getV2FontUrl(pageNum){ return `https://verses.quran.foundation/fonts/quran/hafs/v2/woff2/p${pageNum}.woff2`; }
+function getV2FontFallbackUrl(pageNum){ return `https://cdn.jsdelivr.net/gh/mustafa0x/qpc-fonts@f93bf5f3/mushaf-v2-woff2/QCF_P${String(pageNum).padStart(3,'0')}.woff2`; }
 const loadedV2Pages = new Set();
 const pendingV2Loads = new Map();
 async function ensureV2PageFont(pageNum){
   const family = `p${pageNum}-v2`;
   if (loadedV2Pages.has(pageNum)) return { family, ready: true };
   if (pendingV2Loads.has(pageNum)) return pendingV2Loads.get(pageNum);
+  const tryLoad = (url) => {
+    const face = new FontFace(family, `url('${url}')`);
+    face.display = 'block'; // نمنع ظهور رموز غلط (tofu) لحد ما الخط يجهز
+    // مهلة أمان: لو الخط ماجهزش أو مفيش إنترنت، منسيبش الكلمة عالقة في انتظار
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('font-timeout')), 4000));
+    return Promise.race([face.load(), timeout]);
+  };
   const p = (async () => {
     try {
-      const face = new FontFace(family, `url('${getV2FontUrl(pageNum)}')`);
-      face.display = 'block'; // نمنع ظهور رموز غلط (tofu) لحد ما الخط يجهز
-      // مهلة أمان: لو الخط ماجهزش أو مفيش إنترنت، منسيبش الكلمة عالقة في انتظار
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('font-timeout')), 4000));
-      await Promise.race([face.load(), timeout]);
-      document.fonts.add(face);
+      const loadedFace = await tryLoad(getV2FontUrl(pageNum)).catch(() => tryLoad(getV2FontFallbackUrl(pageNum)));
+      document.fonts.add(loadedFace);
       loadedV2Pages.add(pageNum);
       return { family, ready: true };
     } catch (e) {
-      // فشل التحميل (لا إنترنت / بطء / خطأ) — هنرجع نص الآية العادي بدل رموز مبعثرة
+      // فشل التحميل من المصدرين (لا إنترنت / بطء / خطأ) — هنرجع نص الآية العادي بدل رموز مبعثرة
       return { family, ready: false };
     }
   })();
@@ -1114,7 +1118,14 @@ function buildFontFaceCss(fontKey, base64Font) {
 
 // 1. تصدير الصفحة الحالية
 async function getV2FontAsBase64(pageNum){
-  const response = await fetch(getV2FontUrl(pageNum)); const blob = await response.blob();
+  let response;
+  try {
+    response = await fetch(getV2FontUrl(pageNum));
+    if (!response.ok) throw new Error('primary-source-failed');
+  } catch (e) {
+    response = await fetch(getV2FontFallbackUrl(pageNum));
+  }
+  const blob = await response.blob();
   return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob); });
 }
 async function buildV2FontFacesCss(pages, onProgress){
